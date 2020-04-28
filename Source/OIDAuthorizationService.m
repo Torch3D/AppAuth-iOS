@@ -108,6 +108,23 @@ NS_ASSUME_NONNULL_BEGIN
   NSURL *standardizedURL = [URL standardizedURL];
   NSURL *standardizedRedirectURL = [redirectionURL standardizedURL];
 
+  // Check if CFBundleURLSchemes contains the custom scheme first
+  // See https://github.com/openid/AppAuth-iOS/issues/232
+  NSArray *URLTypes = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleURLTypes"];
+  if (URLTypes != nil) {
+    for (int i = 0; i < [URLTypes count]; ++i) {
+      NSDictionary *schemesDict = [URLTypes objectAtIndex:i];
+      NSArray *schemes = [schemesDict objectForKey:@"CFBundleURLSchemes"];
+      for (int j = 0; j < [schemes count]; ++j) {
+        NSString *scheme = [schemes objectAtIndex:j];
+        if (OIDIsEqualIncludingNil(scheme, standardizedURL.scheme)
+          && OIDIsEqualIncludingNil(standardizedURL.path, standardizedRedirectURL.path)) {
+          return YES;
+        }
+      }
+    }
+  }
+
   return [standardizedURL.scheme caseInsensitiveCompare:standardizedRedirectURL.scheme] == NSOrderedSame
       && OIDIsEqualIncludingNil(standardizedURL.user, standardizedRedirectURL.user)
       && OIDIsEqualIncludingNil(standardizedURL.password, standardizedRedirectURL.password)
